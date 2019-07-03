@@ -1058,6 +1058,72 @@ show_keys()
 #endif /* of NO_HELP */
 }
 
+/*!
+ *  shortcuts
+ *  wsjing
+ *  2017.8.18
+ */
+static int readline(FILE *f, char *buf)
+{
+	int len;
+
+	if (fgets(buf, 1024, f)) {
+		len = strlen(buf);
+		buf[len-1] = 0;
+		return len-1;
+	} else {
+		return -1;
+	}
+}
+
+static int run_shortcut(int fd, int c)
+{
+	char buf[1024];
+	int i;
+	int len;
+	FILE *f;
+
+	f = fopen("/etc/picocom.cmd", "r");
+	if (!f) {
+		fd_printf(STO, "\r\n/etc/picocom.cmd not found\r\n");
+		return -1;
+	}
+
+	if (c == -1) {
+		for (i=1;i<50;i++) {
+			if (readline(f, buf) > 0)
+				fd_printf(STO, "\r\n%c : %s", i<10?i+'0':i-10+'a', buf);
+			else
+				break;
+		}
+		fd_printf(STO, "\r\n");
+	} else if ((c >= '1') && (c <= '9')) {
+		for (i=1;i<c-'0';i++) {
+			readline(f, buf);
+		}
+		len = readline(f, buf);
+		if (len > 0) {
+			write(fd, "\r", 1);
+			write(fd, buf, len);
+			write(fd, "\r", 1);
+		}
+	} else if ((c >= 'a') && (c <= 'z')) {
+		for (i=0;i<c-'a'+9;i++) {
+			readline(f, buf);
+		}
+		len = readline(f, buf);
+		if (len > 0) {
+			write(fd, "\r", 1);
+			write(fd, buf, len);
+			write(fd, "\r", 1);
+		}
+	}
+
+	fclose(f);
+
+	return 0;
+}
+
 /**********************************************************************/
 
 #define RUNCMD_ARGS_MAX 32
@@ -1379,6 +1445,12 @@ do_command (unsigned char c)
         fd_printf(STO, "\r\n*** break sent ***\r\n");
         break;
     default:
+		/*!
+		 *  shortcuts
+		 *  wsjing
+		 *  2017.8.18
+		 */
+		run_shortcut(tty_fd, c);
         break;
     }
 
@@ -1492,11 +1564,18 @@ loop(void)
                     state = ST_TRANSPARENT;
                     break;
                 case ST_TRANSPARENT:
-                    if ( ! opts.noescape && c == opts.escape )
+                    if ( ! opts.noescape && c == opts.escape ) {
                         state = ST_COMMAND;
-                    else
+						/*!
+						 *  shortcuts
+						 *  wsjing
+						 *  2017.8.18
+						 */
+						run_shortcut(tty_fd, -1);
+                    } else {
                         if ( tty_q_push((char *)&c, 1) != 1 )
                             fd_printf(STO, "\x07");
+					}
                     break;
                 default:
                     assert(0);
