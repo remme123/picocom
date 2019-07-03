@@ -1122,6 +1122,7 @@ static int run_shortcut(int fd, int c)
 		 * derry,2019.7.2
 		 */
 		int group_comment = 0;
+		int last_is_empty_line = 0;
 		linenum = 1;
 		for (n_cmds = 0; n_cmds < sizeof(cmd_infos) / sizeof(cmd_info_t);) {
 			len = readline(f, buf);
@@ -1137,6 +1138,8 @@ static int run_shortcut(int fd, int c)
 					goto loop;
 				}
 				
+				last_is_empty_line = 0;
+
 				shortcut = n_cmds<9 ? n_cmds+'1' : n_cmds-9+'a';
 				fd_printf(STO, "\r\n%c : %s", shortcut, buf);
 				cmd_infos[n_cmds].shortcut = shortcut;
@@ -1144,6 +1147,9 @@ static int run_shortcut(int fd, int c)
 				n_cmds++;
 			} else if (len == 0) {
 				/* 空行 */
+				if (last_is_empty_line == 0)
+					fd_printf(STO, "\r\n");
+				last_is_empty_line = 1;
 				group_comment = 0;	/* 组注释结束 */
 			} else {
 				break;
