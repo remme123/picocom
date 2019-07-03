@@ -1116,14 +1116,27 @@ static int run_shortcut(int fd, int c)
 	//printf("key:%c\n", c);
 
 	if (c == -1) {
+		/* 
+		 * 组注释:'##',必须以空行结束 
+		 * 被组注释的一组指令不会被读取
+		 * derry,2019.7.2
+		 */
+		int group_comment = 0;
 		linenum = 1;
 		for (n_cmds = 0; n_cmds < sizeof(cmd_infos) / sizeof(cmd_info_t);) {
 			len = readline(f, buf);
 			if (len > 0) {
+				/* 等待组注释结束 */
+				if (group_comment == 1)
+					goto loop;
+
 				/* 注释行 */
 				if (buf[0] == '#') {
+					if (len > 1 && buf[1] == '#')
+						group_comment = 1;
 					goto loop;
 				}
+				
 				shortcut = n_cmds<9 ? n_cmds+'1' : n_cmds-9+'a';
 				fd_printf(STO, "\r\n%c : %s", shortcut, buf);
 				cmd_infos[n_cmds].shortcut = shortcut;
@@ -1131,6 +1144,7 @@ static int run_shortcut(int fd, int c)
 				n_cmds++;
 			} else if (len == 0) {
 				/* 空行 */
+				group_comment = 0;	/* 组注释结束 */
 			} else {
 				break;
 			}
