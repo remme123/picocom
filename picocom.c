@@ -1124,6 +1124,30 @@ static int run_shortcut(int fd, int c)
 	return 0;
 }
 
+/*!
+ *  timestamp
+ *  wsjing,2017.10.24
+ */
+#include <sys/time.h>
+#define KEY_TIMESTAMP   '\x60' /* `: show timestamp */
+int show_timestamp = 0;
+struct timeval tv;
+int is_newline = 1;
+int is_linehead = 1;
+
+/*!
+ *  打印时间戳
+ *  打印了时间戳的行就不算新行了
+ *  wsjing,2017.11.15
+ */
+int print_timestamp(char *s)
+{
+	is_newline = 0;
+	is_linehead = 0;
+	gettimeofday(&tv,NULL);
+	return sprintf(s, "[%06d.%03d] ", (int)(tv.tv_sec%1000000), (int)(tv.tv_usec/1000));
+}
+
 /**********************************************************************/
 
 #define RUNCMD_ARGS_MAX 32
@@ -1444,6 +1468,24 @@ do_command (unsigned char c)
         term_break(tty_fd);
         fd_printf(STO, "\r\n*** break sent ***\r\n");
         break;
+	/*!
+	 *  timestamp
+	 *  wsjing,2017.10.24
+	 */
+	case KEY_TIMESTAMP:
+		show_timestamp = !show_timestamp;
+		/*!
+		 *  刚打开时间戳新起一行
+		 *  wsjing,2017.11.15
+		 */
+		if (show_timestamp) {
+			is_newline = 1;
+			is_linehead = 1;
+			fd_printf(STO, "\r\ntimestamp: ON\r\n");
+		} else {
+			fd_printf(STO, "\r\ntimestamp: OFF\r\n");
+		}
+		break;	
     default:
 		/*!
 		 *  shortcuts
@@ -1607,6 +1649,43 @@ loop(void)
                     if ( writen_ni(log_fd, buff_rd, n) < n )
                         fatal("write to logfile failed: %s", strerror(errno));
                 for (i = 0; i < n; i++) {
+					/*!
+					 *  timestamp
+					 *  wsjing,2017.10.24
+					 */
+					char c = buff_rd[i];
+					if (show_timestamp) {
+						if (is_newline) {
+							/*!
+							 *  新行并且在行首才打印时间戳
+							 *  wsjing,2017.11.15
+							 */
+							if (is_linehead) 
+								bmp += print_timestamp(bmp);
+						} else {
+							if (is_linehead) {
+								/*!
+								 *  如果在行首，但不是新行，
+								 *  此时打印其他字符前先换一行，
+								 *  然后按新行操作
+								 *  wsjing,2017.11.15
+								 */
+								if ((c != '\n') && (c != '\r')) {
+									bmp += sprintf(bmp, "\n") ;
+									bmp += print_timestamp(bmp);
+								}
+							}
+						}
+						if (c == '\n') {
+							is_newline = 1;
+						} else if (c == '\r') {
+							is_linehead = 1;
+						} else {
+							is_newline = 0;
+							is_linehead = 0;
+						}
+					}
+				
                     bmp += do_map(bmp, opts.imap, buff_rd[i]);
                 }
                 n = bmp - buff_map;
