@@ -1141,7 +1141,7 @@ static int run_shortcut(int fd, int c)
 				last_is_empty_line = 0;
 
 				shortcut = n_cmds<9 ? n_cmds+'1' : n_cmds-9+'a';
-				fd_printf(STO, "\r\n%c : %s", shortcut, buf);
+				fd_printf(STO, "\r\n\e[33;1m%c\e[0m  %s", shortcut, buf);
 				cmd_infos[n_cmds].shortcut = shortcut;
 				cmd_infos[n_cmds].linenum = linenum;
 				n_cmds++;
