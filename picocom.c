@@ -1120,6 +1120,10 @@ static int run_shortcut(int fd, int c)
 		for (n_cmds = 0; n_cmds < sizeof(cmd_infos) / sizeof(cmd_info_t);) {
 			len = readline(f, buf);
 			if (len > 0) {
+				/* 注释行 */
+				if (buf[0] == '#') {
+					goto loop;
+				}
 				shortcut = n_cmds<9 ? n_cmds+'1' : n_cmds-9+'a';
 				fd_printf(STO, "\r\n%c : %s", shortcut, buf);
 				cmd_infos[n_cmds].shortcut = shortcut;
@@ -1130,6 +1134,7 @@ static int run_shortcut(int fd, int c)
 			} else {
 				break;
 			}
+loop:
 			linenum++;
 		}
 		fd_printf(STO, "\r\n");
