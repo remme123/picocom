@@ -2159,6 +2159,12 @@ main (int argc, char *argv[])
     }
 #endif
 
+	/*!
+	 *  修改标题栏
+	 *  wsjing,2017.11.8
+	 */
+	fd_printf(STO, "\033]0;%s\007", opts.port);
+
     if ( opts.noinit ) {
         r = term_add(tty_fd);
     } else {
