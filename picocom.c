@@ -1076,9 +1076,33 @@ static int readline(FILE *f, char *buf)
 	}
 }
 
+/**
+ * 读指定行内容,不包含换行
+ *  wsjing
+ *  2019.7.3
+ */
+int readline_ex(FILE *f, char *buf, int linenum) 
+{
+	int i;
+	for (i=1; i<linenum; i++) {
+		readline(f, buf);
+	}
+	return readline(f, buf);
+}
+
+typedef struct {
+	char shortcut;		/* 分配的快捷键,如‘0’、‘a’ */
+	char linenum;		/* 该条命令对应cmd文件里面的行号 */
+} cmd_info_t;
+
+cmd_info_t cmd_infos[35]; 	/* sum:a-z,0-9 */
+int n_cmds;
+
 static int run_shortcut(int fd, int c)
 {
 	char buf[1024];
+	char shortcut;
+	int linenum;
 	int i;
 	int len;
 	FILE *f;
@@ -1089,33 +1113,47 @@ static int run_shortcut(int fd, int c)
 		return -1;
 	}
 
+	//printf("key:%c\n", c);
+
 	if (c == -1) {
-		for (i=1;i<50;i++) {
-			if (readline(f, buf) > 0)
-				fd_printf(STO, "\r\n%c : %s", i<10?i+'0':i-10+'a', buf);
-			else
+		linenum = 1;
+		for (n_cmds = 0; n_cmds < sizeof(cmd_infos) / sizeof(cmd_info_t);) {
+			len = readline(f, buf);
+			if (len > 0) {
+				shortcut = n_cmds<9 ? n_cmds+'1' : n_cmds-9+'a';
+				fd_printf(STO, "\r\n%c : %s", shortcut, buf);
+				cmd_infos[n_cmds].shortcut = shortcut;
+				cmd_infos[n_cmds].linenum = linenum;
+				n_cmds++;
+			} else if (len == 0) {
+				/* 空行 */
+			} else {
 				break;
+			}
+			linenum++;
 		}
 		fd_printf(STO, "\r\n");
 	} else if ((c >= '1') && (c <= '9')) {
-		for (i=1;i<c-'0';i++) {
-			readline(f, buf);
-		}
-		len = readline(f, buf);
-		if (len > 0) {
-			write(fd, "\r", 1);
-			write(fd, buf, len);
-			write(fd, "\r", 1);
+		i = c - '1';
+		if (i < n_cmds) {
+			linenum = cmd_infos[i].linenum;
+			len = readline_ex(f, buf, linenum);
+			if (len > 0) {
+				write(fd, "\r", 1);
+				write(fd, buf, len);
+				write(fd, "\r", 1);
+			}
 		}
 	} else if ((c >= 'a') && (c <= 'z')) {
-		for (i=0;i<c-'a'+9;i++) {
-			readline(f, buf);
-		}
-		len = readline(f, buf);
-		if (len > 0) {
-			write(fd, "\r", 1);
-			write(fd, buf, len);
-			write(fd, "\r", 1);
+		i = c - 'a' + 9;
+		if (i < n_cmds) {
+			linenum = cmd_infos[i].linenum;
+			len = readline_ex(f, buf, linenum);
+			if (len > 0) {
+				write(fd, "\r", 1);
+				write(fd, buf, len);
+				write(fd, "\r", 1);
+			}
 		}
 	}
 
