@@ -1135,6 +1135,8 @@ static int run_shortcut(int fd, int c)
 				if (buf[0] == '#') {
 					if (len > 1 && buf[1] == '#')
 						group_comment = 1;
+					else
+						fd_printf(STO, "\r\n   \e[1;36m%s\e[0m", buf);		/* 空3格和内容对齐 */
 					goto loop;
 				}
 				
