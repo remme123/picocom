@@ -1098,6 +1098,37 @@ typedef struct {
 cmd_info_t cmd_infos[35]; 	/* sum:a-z,0-9 */
 int n_cmds;
 
+int send_cmd(int fd, char *cmd, int len)
+{
+	char *p;
+	char *token;
+
+	/* 
+	 * 处理行内<cr>
+	 * Max,2019.7.8
+	 */
+	token = cmd;
+	p = strstr(token, "<cr>");
+	while (p) {
+		write(fd, token, p - token);
+		write(fd, "\r", 1);
+		usleep(500000);
+		token = p + 4;
+		if (token >= cmd + len) {
+			token = NULL;
+			break;
+		}
+		p = strstr(token, "<cr>");
+	}
+	/* tail */
+	if (token) {
+		write(fd, token, len - (token - cmd));
+		write(fd, "\r", 1);
+	}
+
+	return 0;
+}
+
 static int run_shortcut(int fd, int c)
 {
 	char buf[1024];
@@ -1166,9 +1197,7 @@ loop:
 			linenum = cmd_infos[i].linenum;
 			len = readline_ex(f, buf, linenum);
 			if (len > 0) {
-				write(fd, "\r", 1);
-				write(fd, buf, len);
-				write(fd, "\r", 1);
+				send_cmd(fd, buf, len);
 			}
 		}
 	} else if ((c >= 'a') && (c <= 'z')) {
@@ -1177,9 +1206,7 @@ loop:
 			linenum = cmd_infos[i].linenum;
 			len = readline_ex(f, buf, linenum);
 			if (len > 0) {
-				write(fd, "\r", 1);
-				write(fd, buf, len);
-				write(fd, "\r", 1);
+				send_cmd(fd, buf, len);
 			}
 		}
 	}
