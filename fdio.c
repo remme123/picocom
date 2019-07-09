@@ -55,7 +55,7 @@ writen_ni(int fd, const void *buff, size_t n)
 int
 fd_vprintf (int fd, const char *format, va_list ap)
 {
-    char buf[256];
+    char buf[1024];
     int len;
 
     len = vsnprintf(buf, sizeof(buf), format, ap);
