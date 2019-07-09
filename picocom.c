@@ -1131,6 +1131,7 @@ int send_cmd(int fd, char *cmd, int len)
 
 static int run_shortcut(int fd, int c)
 {
+	char path[128];
 	char buf[1024];
 	char shortcut;
 	int linenum;
@@ -1138,10 +1139,14 @@ static int run_shortcut(int fd, int c)
 	int len;
 	FILE *f;
 
-	f = fopen("/etc/picocom.cmd", "r");
+	sprintf(path, "%s/.picocom.cmd", getenv("HOME"));
+	f = fopen(path, "r");
 	if (!f) {
-		fd_printf(STO, "\r\n/etc/picocom.cmd not found\r\n");
-		return -1;
+		f = fopen("/etc/picocom.cmd", "r");
+		if (!f) {
+			fd_printf(STO, "\r\n\"~/.picocom.cmd\" or \"/etc/picocom.cmd\" not found\r\n");
+			return -1;
+		}
 	}
 
 	//printf("key:%c\n", c);
